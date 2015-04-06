@@ -2,6 +2,8 @@
 import System.Environment
 import Data.Char
 import Data.Word
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import qualified Data.ByteString as B
 
 -- The Dwarf Fortress character set, which is really just codepage 437.
@@ -34,13 +36,17 @@ dfToUnicode c = dfchars !! (fromIntegral c)
 --    2. The rest of the file is printable ASCII and codes 9, 10 or 13.
 -- Using this function to decode a DF language raw should safely produce
 -- a correct raw in which the CP437 characters have been unicodified.
-rawToUnicode :: Word8 -> Char
-rawToUnicode c
+rawCharToUnicode :: Word8 -> Char
+rawCharToUnicode c
     | c `elem` [9, 10, 13] = chr $ fromIntegral c
     | otherwise            = dfToUnicode c
+
+-- The obvious, probably inefficient implementation
+rawToText :: B.ByteString -> T.Text
+rawToText bs = T.pack $ map rawCharToUnicode $ B.unpack bs
 
 main :: IO ()
 main = do
     args <- getArgs
     contents <- B.readFile $ head args
-    putStr $ map rawToUnicode $ B.unpack contents
+    TIO.putStr $ rawToText contents
