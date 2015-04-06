@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 import System.Environment
 import Data.Char
+import Data.Word
 import qualified Data.ByteString as B
 
 -- The Dwarf Fortress character set, which is really just codepage 437.
@@ -23,8 +24,8 @@ dfchars =
     "αßΓπΣσµτΦΘΩδ∞φε∩" ++
     "≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ "
 
-dfToUnicode :: Int -> Char
-dfToUnicode = (!!) dfchars
+dfToUnicode :: Word8 -> Char
+dfToUnicode c = dfchars !! (fromIntegral c)
 
 -- A specialized character conversion for partially-encoded raw files.
 -- Rather than parse the raws to figure out which parts are CP437, we
@@ -33,13 +34,13 @@ dfToUnicode = (!!) dfchars
 --    2. The rest of the file is printable ASCII and codes 9, 10 or 13.
 -- Using this function to decode a DF language raw should safely produce
 -- a correct raw in which the CP437 characters have been unicodified.
-rawToUnicode :: Int -> Char
+rawToUnicode :: Word8 -> Char
 rawToUnicode c
-    | c `elem` [9, 10, 13] = chr c
+    | c `elem` [9, 10, 13] = chr $ fromIntegral c
     | otherwise            = dfToUnicode c
 
 main :: IO ()
 main = do
     args <- getArgs
     contents <- B.readFile $ head args
-    putStr $ map (rawToUnicode . fromIntegral) $ B.unpack contents
+    putStr $ map rawToUnicode $ B.unpack contents
