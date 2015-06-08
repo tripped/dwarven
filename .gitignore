@@ -1,6 +1,7 @@
 bin/
 obj/
 decode
+parseraw
 *.hi
 *.s
 *.o
