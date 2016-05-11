@@ -1,0 +1,324 @@
+Some attempts at realizing Dwarf Fortress's procedurally generated art forms.
+
+
+E.g.:
+-------------------------------------------------------------------------------
+A solemn poetic form intended to express grief over mining, originating in
+The Splattered Confederations. The poem is a single octet. Use of internal
+rhyme, assonance and vivid imagery is characteristic of the form. Each line
+has six feet with an accent pattern of unstressed-unstressed-stressed
+(qualitative anapaestic hexameter). The ending of every line of the poem
+rhymes with every other. The fifth line of the octet contrasts the
+underlying meaning of the second line. The second line of the octet is
+required to maintain the phrasing of the first line. The eighth line of the
+octet uses the same placement of allusions as the first line.
+-------------------------------------------------------------------------------
+
+Note: it might be interesting to attempt this sort of poem in Dwarven,
+although of course its relative lack of grammar would make parsing next to
+impossible. Even more interesting might be an attempt at the procedural
+generation of a grammar with particles of speech to complement its noun and
+verb vocabulary...
+
+It would first be necessary to devise some (simplified) first-order rules
+that characterize possible grammars. This step may require some research.
+But, as we are not attempting to formalize every human grammar from
+Cantonese to Farsi, we may confine ourselves to a few basic properties,
+e.g.,
+
+    - The syntax of particles, prepositions, pronouns, etc.
+    - Synthesis vs. isolation, i.e., the relative ratio of morphemes to
+      words. (This may be treated as a layer below the syntax, although some
+      association may be inevitable.)
+    - Fusion vs. agglutination, which characterizes the synthesis in a
+      synthetic language. Fusional languages exhibit a high degree of
+      morphological variability to determine a word's role in syntax and
+      grammar, whereas in agglutinative languages synthesized morphemes
+      generally remain unchanged. Fusion here is essentially inflection.
+
+Just these basic categories should be plenty to start with. We already have
+the basis of our vocabularies, provided by the extensive DF language files,
+which associate morphemes with concepts and, to a limited degree, parts of
+speech.
+
+(Note that there are many possible attributes we might consider, including
+head-initial vs. head-final, head-marking vs. dependent-marking, and
+incorporation, not to mention the possibility of highly polysynthetic
+languages.)
+
+It is worthwhile discussing for a moment the informational structure of the
+DF language files.
+
+The "top level" is language_SYM.txt, which enumerates all possible language
+symbols. Language symbols are just unique identifiers, such as LUTE, STYLE,
+SKIRT_CLOTHING, or SKIRT_VERB. These symbols appear under one or more
+"connotation" headings, such as "FLOWERY" or "PRIMITIVE." That is, a single
+[S_WORD:X] symbol can appear multiple times in the file, under different
+headings.
+
+Disambiguations at this level, such as SKIRT_CLOTHING vs. SKIRT_VERB, appear
+to exist to allow different senses of the same word to have different
+connotations. (It is unclear, then, why connotation is not associated with
+meanings given in language_words.txt, which we'll discuss next.)
+
+In language_words.txt, the symbols enumerated in language_SYM.txt appear
+each exactly once, each with subordinate tags listing the parts of speech
+that are applicable to this symbol. For example, [WORD:ACT] has two entries:
+[NOUN:act:acts], and [VERB:act:acts:acted:acted:acting], which each give the
+English inflected forms of the respective parts of speech. Additional
+attribtues apply to these parts, which seem mainly concerned with parsing
+the usage of these words in generated names (e.g., front and rear compounds,
+"of X" or "of the X", etc.).
+
+So, without digging *too* deeply into the study of linguistic typology, we
+could try characterizing a Dwarven language by starting with its base
+vocabulary, which we shall treat essentially as a rough mapping of morphemes
+to noun/adj/verb with a corresponding meaning.
+
+We will then make arbitrary decisions about the following parameters:
+
+    - degree of isolation vs. synthesis
+    - degree of fusion vs. agglutination
+    - manner of inflection
+    - syntax tree, which will encode such things as head-direction,
+      marking, word order, and the types of phrases that exist.
+
+The properties of synthesis will probably be the easiest, at least in the
+abstract, though it may be necessary to characterize different kinds of
+synthesis. For example, pure noun-compounding vs. noun-verb compounding
+or noun-adjective compounding.
+
+Actually, note that we can also contrast synthesis with analysis. Analytic
+languages do not use inflectional morphemes. (But might still use
+agglutinative synthesis?) Highly analytic languages obviously require free
+morphemes, implying that we would need to generate many parts of speech to
+supplement the basic vocabulary. (As opposed to generating inflectional
+morpheme fusion to suit the same purpose.)
+
+Let's try to clarify which dimensions are independent:
+
+1. Morpheme-to-word ratio.
+    Isolating (close to 1) --- Synthetic (Much higher than 1)
+
+Corrolary Q: must a perfectly isolating language also be purely analytic?
+I.e., if Mw == 1, does that imply no inflection? Hm. Apparently, Mw ratio
+takes into account *derivational* morphemes...
+
+Hm. Let's classify morphemes first, as that my help my understanding.
+
+A morpheme is the smallest grammatical unit with any meaning. Every morpheme
+is either free or bound; bound morphemes are either derivational or
+inflectional.
+
+Morpheme:
+    Free: can function independently
+    Bound: cannot function independently
+        Derivational: semantically modify a root morpheme
+        Inflectional: alter a word syntactically without changing meaning
+
+Inflectional morphemes generally apply to a grammatical cateogry; e.g.,
+case, number, mood, tense, and so on.
+
+
+THE FIRST STEPS
+
+We should first reach for something fairly straightforward and achievable.
+Let's first create a program that characterizes a language based on the
+properties we've enumerated:
+
+    - synthesis vs. isolation
+    - fusion vs. agglutination (irrelevant if perfectly isolating)
+    - analysis (probably relevant for both synthesizing and isolating)
+
+And from this characterization, and the starting vocabulary file, generates
+the set of all possible morphemes in the language.
+
+Which morphemes do we generate? This is not a trivial question. We make make
+some fairly straightforward inferences from our initial characterization:
+
+    - if the language is perfectly isolating, generate no derivational
+      morphemes, nor any bound morphemes of any sort
+    - if the language is perfectly analytic, generate no inflectional
+      morphemes
+
+However, if either analysis or isolation is slightly less than perfect, that
+does not mean that we should generate few or almost no inflectional or bound
+morphemes. There could be a large complement of them, and if they were used
+only infrequently, the language would still be considered relatively
+analytic or isolating, as appropriate.
+
+Thus, it seems we may want some additional parameters: the level of "spread"
+to a language's types of synthesis. An especially perverse language might
+have a single bound morpheme that is used in half of all its words, for
+example; or it might have a hundred, but hardly ever use them.
+
+(Actually, this concept could apply equally well to free morphemes, now that
+I think of it.)
+
+However, this consideration is made non-trivial because morphemes tie in
+closely, both to semantics (in the case of derivational morphemes) and to
+syntax (as in the case of inflectional morphemes, and even free morphemes
+that function as particles).
+
+Broadly, we should assume that any kind of morpheme that is not a root
+(i.e., not taken straight from the crude vocab file) can influence either
+semantics or syntactic category (why not both?), and in the case of free
+morphemes, may have an important part in the grammar later.
+
+Semantics are going to be really hard; I expect that we'll just hard-code a
+set of possibilities (things like -ity or -ness for derivational morphemes)
+and pick randomly from them. Perhaps there's a higher abstraction we can
+use.
+
+However, a lot of effort has already gone into the typology of grammatical
+categories. I suspect a highly productive approach will just be to encode a
+certain subset of these -- e.g., some cases, some tenses, some moods, and so
+on -- choose a set that a language will use, and then generate morphemes
+corresponding to them.
+
+E.g., suppose we decide to generate a language that contains gender. We
+might arbitrarily decide on five genders: feminine, honeybee, strange,
+canadian, and neuter. Furthermore, the language is relatively synthetic and
+fusional. We might generate five inflectional morpheme affixes:
+
+    feminine: -[i]r
+    honeybee: f[o]-
+    strange:  -[n]a
+    canadian: -eh
+    neuter:   {}
+
+Note that the honeybee gender is indicated by a prefix and not a suffix, as
+most of the others. The neuter morpheme is the empty string (raising
+questions as to whether it is appropriate to include it in a list of
+morphemes, but such null inflections should be accounted for somehow.)
+
+The dwarven root word for "bear" (as in the large furry mammal) is "uvel."
+When generating our nouns, we might dictate that "uvel" is feminine. Thus,
+the proper noun form of "bear" is "uvelir."
+
+(Note that this is just the application of a fusing morpheme to a root
+(which, in this case, is probably not a free morpheme itself) to form the
+lexeme representing the bear noun. Indeed, we could have an entirely other
+set of inflectional gender morphemes that are used to form verbs agreeing
+with such nouns.)
+
+ROOTS
+
+The roots in a generated language will be based on its primitive vocabulary.
+But how do we define "root"? Traditionally, this means a word with no
+affixes, or perhaps a word with no inflectional endings. (What about
+derivational morphemes? "Happiness" is not a root. Arguably, "happy" isn't
+either, in English. (Actually, looks like "hap" might be a coincidental
+assimilation, with "happy" deriving directly from "happyn." Just shows how
+complex a seemingly simple thing like root analysis can be!)
+
+But again, in our case we have an existing corpus of what we will call
+"primitive words." Let us furthermore define a root to be a single morpheme
+(most likely a free morpheme, but we could probably generate bound root
+morphemes if we wished) that corresponds to one of the primitive words.
+
+Now, with respect to our example above... Given that "uvel" is a dwarven
+primitive word, we wish to generate a corresponding root. In some languages,
+the root may be identical to the primitive word. In the example above, we
+seem to have decided to "inflect" the primitive word to form the root: the
+feminine "uvelir." There are multiple ways of interpreting this.
+
+In one, we have simply modified the primitive word to form a new, single
+root morpheme. '-ir' in this sense is NOT an inflectional morpheme, just an
+evolution of the primitive morphology. In this particular case, we chose to
+modify it according to a rule about noun gender, but we could have done
+otherwise. We could even introduce similar endings as inflectional morphemes
+applied to adjectives or verbs to form agreement. For example, perhaps "red
+bear" must be rendered as "uvelir angir." (n:BEAR adj:RED+g_suffix:FEM)
+Note that "uvelir" is a single morpheme, and "angir" is two.
+
+Another interpretation is to preserve the idea of "uvel" as the root -- the
+root is identical to the primitive word. The content word that is the noun
+"bear," then, consists of two morphemes: a root, and a required gender
+inflectional morpheme. We could then construct "uvelir angir" as
+
+    (n:(root:BEAR)+(g_suffix:FEM) adj:(root:RED)+(g_suffix:FEM))
+
+Each word consisting of a root and an inflectional morpheme suffix, which
+agree. Note that agreement needn't involve identical morphemes. A
+categorical morpheme encodes a particular value from a particular
+grammatical category, but more than one morpheme in a grammar may have the
+same (category, value) pair -- likely they combine with different parts of
+speech, e.g., "-ir" might be feminine gender for noun roots, "-er" might
+mean the same thing for adjectivial agreement, and "-xxzzpz" might be the
+required feminine affix for verbs.
+
+In short, we there are independent processes here. One is transformation of
+the primitive words to form roots. The other is the inflection of roots to
+form words. We could have either, both, or none.
+
+
+
+ORTHOGRAPHY
+
+We could conceivably extend this idea to generate scripts (or even phonetic
+schema) for these languages. This involves a layer of abstraction. The most
+indivisible units in our grammar are morphemes; however, morphemes may be
+orthographically divisible. (Or phonetically divisible!) The current source
+for primitive words provides hints at both: the words are associated with
+spellings (and corresponding pronunciations) in a Latin script. We could
+transliterate from this source to provide alternate orthography.
+
+Alternatively, we could design the system to retain as much abstraction as
+possible. Deal with morphemes and rules for combining morphemes, and retain
+that representation until it's time to render a result orthographically.
+
+We introduced a prototypical notation above, which needs only two sets of
+symbols: categories (in lowercase) and VALUES (in uppercase). It may be
+advantageous to formalize that notation. Should the notation be
+order-sensitive? E.g., is there a difference between
+
+    (n:(root:RIVER)+(aff:GENITIVE))
+
+and
+
+    (n:(aff:GENITIVE)+(root:RIVER))
+
+or does that bleed too much orthographic information into the abstraction?
+A pure model argues for commutativity; we are representing the formation of
+a word as the combination of certain morphemes; let the rules of that
+combination dictate the order they ought to be rendered in...
+But that, of course, assumes that the combination has a single, determined
+order. Could a language permit multiple combinations? Might they have a
+different meaning?
+
+This is really an applicative notation. Consider it like a Haskell function:
+
+inflect :: Lexeme -> InflectingMorpheme -> Lexeme
+
+But at what point does order enter the equation? If we want it to appear
+early, we should distinguish the types of affix:
+
+inflectr :: Lexeme -> Suffix -> Lexeme
+inflectl :: Lexeme -> Prefix -> Lexeme
+
+The definition of the Lexeme type should be interesting. It must represent
+its composition as a tree of Morphemes, which may themselves be roots, bound
+or free morphemes, inflecting or derivational, etc.
+
+ON THE DISTILLATION OF MEANING
+
+Once the rules of a language's grammar are generated, we must solve the
+problem of actually constructing a poem according to both the grammar and
+the rules of a particular poetic form. We should also like the poem to have
+meaning, and to express one or more coherent ideas. This is not easy.
+In fact, it is probably not even defined.
+
+One idea which we may reject out of hand is the construction of a universal
+(or intermediate) grammar, in which a poem may be generated and subsequently
+translated into any generated language. This would be possible, and would
+require only framing the construction of our individual grammars as
+generative transformations of the universal abstract syntax tree. We reject
+it because it would be uninteresting; instead, a poem's meaning and
+structure should be influenced more by the language in which it is written.
+It is not a requirement that a poem have a sensible translation into any
+language other than the one in which it is written. In fact, I would
+consider it a mark of success to generate two languages and an apparently
+meaningful poem in each one, such that each poem simply cannot be expressed
+in the other language without a dramatic change in meaning, necessary
+interpretation, or structure.
