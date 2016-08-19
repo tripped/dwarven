@@ -5,3 +5,4 @@ parseraw
 *.hi
 *.s
 *.o
+.stack-work
